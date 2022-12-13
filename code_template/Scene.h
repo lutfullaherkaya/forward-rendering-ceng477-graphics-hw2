@@ -20,28 +20,49 @@
 
 using namespace std;
 
-class Scene
-{
+class Scene {
 public:
-	Color backgroundColor;
-	bool cullingEnabled;
+    Color backgroundColor;
+    bool cullingEnabled;
 
-	vector< vector<Color> > image;
-	vector< Camera* > cameras;
-	vector< Vec3* > vertices;
-	vector< Color* > colorsOfVertices;
-	vector< Scaling* > scalings;
-	vector< Rotation* > rotations;
-	vector< Translation* > translations;
-	vector< Mesh* > meshes;
+    vector <vector<Color>> image;
+    vector<Camera *> cameras;
+    vector<Vec3 *> vertices;
+    vector<Color *> colorsOfVertices;
+    vector<Scaling *> scalings;
+    vector<Rotation *> rotations;
+    vector<Translation *> translations;
+    vector<Mesh *> meshes;
 
-	Scene(const char *xmlPath);
+    Scene(const char *xmlPath);
 
-	void initializeImage(Camera* camera);
-	void forwardRenderingPipeline(Camera* camera);
-	int makeBetweenZeroAnd255(double value);
-	void writeImageToPPMFile(Camera* camera);
-	void convertPPMToPNG(string ppmFileName, int osType);
+    void initializeImage(Camera *camera);
+
+    void forwardRenderingPipeline(Camera *camera);
+
+    int makeBetweenZeroAnd255(double value);
+
+    void writeImageToPPMFile(Camera *camera);
+
+    void convertPPMToPNG(string ppmFileName, int osType);
 };
+
+class ForwardRenderingPipeline {
+public:
+    Scene &scene;
+    Camera &camera;
+
+    ForwardRenderingPipeline(Scene &scene, Camera &camera) : scene(scene), camera(camera) {
+
+    }
+
+    void doModelingTransformations();
+
+    void doViewingTransformations();
+
+    void doRasterization();
+
+};
+
 
 #endif

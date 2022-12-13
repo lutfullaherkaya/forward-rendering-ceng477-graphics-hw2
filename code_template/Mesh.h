@@ -7,8 +7,7 @@
 
 using namespace std;
 
-class Mesh
-{
+class Mesh {
 
 public:
     int meshId;
@@ -17,14 +16,15 @@ public:
     vector<int> transformationIds;
     vector<char> transformationTypes;
     int numberOfTriangles;
-    vector<Triangle> triangles;
+    vector <Triangle> triangles;
 
     Mesh();
+
     Mesh(int meshId, int type, int numberOfTransformations,
-          vector<int> transformationIds,
-          vector<char> transformationTypes,
-          int numberOfTriangles,
-          vector<Triangle> triangles);
+         vector<int> transformationIds,
+         vector<char> transformationTypes,
+         int numberOfTriangles,
+         vector <Triangle> triangles);
 
     friend ostream &operator<<(ostream &os, const Mesh &m);
 };
