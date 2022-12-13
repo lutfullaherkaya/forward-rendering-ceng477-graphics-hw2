@@ -21,72 +21,17 @@
 using namespace tinyxml2;
 using namespace std;
 
-struct Box {
-    Vec3 min, max;
-
-    Box() = default;
-
-    Box(Vec3 min, Vec3 max) : min(min), max(max) {}
-
-    bool contains(Vec3 point) {
-        return point.x >= min.x && point.x <= max.x &&
-               point.y >= min.y && point.y <= max.y &&
-               point.z >= min.z && point.z <= max.z;
-    }
-
-    int getWidestAxis() {
-        int widestAxis = 0;
-        for (int axis = 1; axis < 3; ++axis) {
-            if (max[axis] - min[axis] > max[widestAxis] - min[widestAxis]) {
-                widestAxis = axis;
-            }
-        }
-        return widestAxis;
-    }
-};
-
-Box getBoundingBox(vector<Vec3 *> &vertices, Scene &scene) {
-    Vec3 min = {std::numeric_limits<double>::max(), std::numeric_limits<double>::max(),
-                std::numeric_limits<double>::max(), -1};
-    Vec3 max = {-std::numeric_limits<double>::max(), -std::numeric_limits<double>::max(),
-                -std::numeric_limits<double>::max(), -1};
-    for (auto &vertexPtr: vertices) {
-        Vec3 &vertex = *vertexPtr;
-
-        if (vertex.x < min.x) {
-            min.x = vertex.x;
-        }
-        if (vertex.y < min.y) {
-            min.y = vertex.y;
-        }
-        if (vertex.z < min.z) {
-            min.z = vertex.z;
-        }
-        if (vertex.x > max.x) {
-            max.x = vertex.x;
-        }
-        if (vertex.y > max.y) {
-            max.y = vertex.y;
-        }
-        if (vertex.z > max.z) {
-            max.z = vertex.z;
-        }
-
-    }
-    return {min, max};
-}
 
 void ForwardRenderingPipeline::doModelingTransformations() {
-    for (auto mesh : scene.meshes) {
+    for (auto mesh: scene.meshes) {
         int numberOfTransformations = mesh->numberOfTransformations;
+
         Matrix4 transformationMatrix = getIdentityMatrix();
-
         for (int i = 0; i < numberOfTransformations; i++) {
-            auto transformationId = mesh -> transformationIds[i]-1;
-            auto transformationType = mesh -> transformationTypes[i];
+            auto transformationId = mesh->transformationIds[i] - 1;
+            auto transformationType = mesh->transformationTypes[i];
 
-            if(transformationType == 't')
-            {
+            if (transformationType == 't') {
                 auto tx = scene.translations[transformationId]->tx;
                 auto ty = scene.translations[transformationId]->ty;
                 auto tz = scene.translations[transformationId]->tz;
@@ -97,102 +42,83 @@ void ForwardRenderingPipeline::doModelingTransformations() {
                         {0, 0, 1, tz},
                         {0, 0, 0, 1}
                 };
-                transformationMatrix = multiplyMatrixWithMatrix(translation_matrix,transformationMatrix);
+                transformationMatrix = multiplyMatrixWithMatrix(translation_matrix, transformationMatrix);
 
-            }
-            else if(transformationType == 's')
-            {
+            } else if (transformationType == 's') {
                 auto sx = scene.scalings[transformationId]->sx;
                 auto sy = scene.scalings[transformationId]->sy;
                 auto sz = scene.scalings[transformationId]->sz;
 
                 double scaling_matrix[4][4] = {
-                        {sx, 0, 0, 0},
-                        {0, sy, 0, 0},
-                        {0, 0, sz, 0},
-                        {0, 0, 0, 1}
+                        {sx, 0,  0,  0},
+                        {0,  sy, 0,  0},
+                        {0,  0,  sz, 0},
+                        {0,  0,  0,  1}
                 };
-                transformationMatrix = multiplyMatrixWithMatrix(scaling_matrix,transformationMatrix);
+                transformationMatrix = multiplyMatrixWithMatrix(scaling_matrix, transformationMatrix);
 
-            }
-            else if(transformationType == 'r')
-            {
+            } else if (transformationType == 'r') {
                 auto rAngle = scene.rotations[transformationId]->angle;
                 auto rx = scene.rotations[transformationId]->ux;
                 auto ry = scene.rotations[transformationId]->uy;
                 auto rz = scene.rotations[transformationId]->uz;
                 // initialize u, declare v and w vectors
-                Vec3 u(rx,ry,rz,-1),v,w;
+                Vec3 u(rx, ry, rz, -1), v, w;
                 //finding v vector
-                auto minComponent = min(abs(rx),min(abs(ry),abs(rz)));
-                if(minComponent == abs(rx))
-                {
-                    v = Vec3(0,-rz,ry,-1);
-                }
-                else if(minComponent == abs(ry))
-                {
-                    v = Vec3(-rz,0,rx,-1);
-                }
-                else
-                {
-                    v = Vec3(-ry,rx,0,-1);
+                auto minComponent = min(abs(rx), min(abs(ry), abs(rz)));
+                if (minComponent == abs(rx)) {
+                    v = Vec3(0, -rz, ry, -1);
+                } else if (minComponent == abs(ry)) {
+                    v = Vec3(-rz, 0, rx, -1);
+                } else {
+                    v = Vec3(-ry, rx, 0, -1);
                 }
                 //finding w vector
-                w = crossProduct(u,v);
+                w = crossProductVec3(u, v);
                 //normalize v,w
-                v = normalize(v);
-                w = normalize(w);
+                v = normalizeVec3(v);
+                w = normalizeVec3(w);
                 //finding rotation matrix
                 double mInv[4][4] = {
                         {u.x, v.x, w.x, 0},
                         {u.y, v.y, w.y, 0},
                         {u.z, v.z, w.z, 0},
-                        {0, 0, 0, 1}
+                        {0,   0,   0,   1}
                 };
 
                 double m[4][4] = {
                         {u.x, u.y, u.z, 0},
                         {v.x, v.y, v.z, 0},
                         {w.x, w.y, w.z, 0},
-                        {0, 0, 0, 1}
+                        {0,   0,   0,   1}
                 };
 
                 double xRotationMatrix[4][4] = {
-                        {1, 0, 0, 0},
-                        {0, cos(rAngle), -sin(rAngle), 0},
-                        {0, sin(rAngle), cos(rAngle), 0},
-                        {0, 0, 0, 1}
+                        {1, 0,                        0,                         0},
+                        {0, cos(rAngle * M_PI / 180), -sin(rAngle * M_PI / 180), 0},
+                        {0, sin(rAngle * M_PI / 180), cos(rAngle * M_PI / 180),  0},
+                        {0, 0,                        0,                         1}
                 };
-                Matrix4 xRotation_m = multiplyMatrixWithMatrix(xRotationMatrix,m);
-                Matrix4 mInv_xRotation_m = multiplyMatrixWithMatrix(mInv,xrotation_m);
-                transformationMatrix = multiplyMatrixWithMatrix(mInv_xRotation_m,transformationMatrix);
-            }
-            else
-            {
+                Matrix4 xRotation_m = multiplyMatrixWithMatrix(xRotationMatrix, m);
+                Matrix4 mInv_xRotation_m = multiplyMatrixWithMatrix(mInv, xRotation_m);
+                transformationMatrix = multiplyMatrixWithMatrix(mInv_xRotation_m, transformationMatrix);
+            } else {
                 cout << "Error: Unknown transformation type" << endl;
             }
+
         }
 
-        for (auto triangle: mesh->triangles) {
-            Vec4 v1 = {triangle->v1->x, triangle->v1->y, triangle->v1->z, 1, -1};
-            Vec4 v2 = {triangle->v2->x, triangle->v2->y, triangle->v2->z, 1, -1};
-            Vec4 v3 = {triangle->v3->x, triangle->v3->y, triangle->v3->z, 1, -1};
+        for (auto &triangle: mesh->triangles) {
+            std::vector < Vec3 * > vertices = {&triangle.vertex1, &triangle.vertex2, &triangle.vertex3};
+            for (auto &vertexPtr: vertices) {
+                Vec3 &vertex = *vertexPtr;
+                Vec4 vertices4(vertex.x, vertex.y, vertex.z, 1, -1);
+                Vec4 vertexMatrix_m = multiplyMatrixWithVec4(transformationMatrix, vertices4);
+                vertex.x = vertexMatrix_m.x;
+                vertex.y = vertexMatrix_m.y;
+                vertex.z = vertexMatrix_m.z;
+            }
 
-            v1 = multiplyMatrixWithVector(transformationMatrix, v1);
-            v2 = multiplyMatrixWithVector(transformationMatrix, v2);
-            v3 = multiplyMatrixWithVector(transformationMatrix, v3);
-
-            triangle->vertex1->x = v1.x;
-            triangle->vertex1->y = v1.y;
-            triangle->vertex1->z = v1.z;
-
-            triangle->vertex2->x = v2.x;
-            triangle->vertex2->y = v2.y;
-            triangle->vertex2->z = v2.z;
-
-            triangle->vertex3->x = v3.x;
-            triangle->vertex3->y = v3.y;
-            triangle->vertex3->z = v3.z;
 
         }
     }
@@ -219,13 +145,12 @@ void ForwardRenderingPipeline::doViewingTransformations() {
     coordinates will be with respect to the uvw-e coordinate
     system (i.e. the camera coordinate system)*/
 
-    Box box = getBoundingBox(scene.vertices, scene);// todo: is it true? Should it be the bounding box?
-    double l = box.min.x;
-    double b = box.min.y;
-    double n = -box.min.z;
-    double r = box.max.x;
-    double t = box.max.y;
-    double f = -box.max.z;
+    double l = camera.left;
+    double b = camera.bottom;
+    double n = camera.near;
+    double r = camera.right;
+    double t = camera.top;
+    double f = camera.far;
 
     double orthMatrixTemp[4][4] = {
             {2 / (r - l), 0,           0,            -(r + l) / (r - l)},
