@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <limits>
 
 #include "Camera.h"
 #include "Color.h"
@@ -63,6 +64,7 @@ public:
     void doRasterization();
 
 };
+
 
 
 #endif

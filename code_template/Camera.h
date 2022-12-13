@@ -4,7 +4,13 @@
 #include "Vec3.h"
 #include <string>
 
+#define PROJ_ORTHO 0
+#define PROJ_PERSPECTIVE 1
+
+
 using namespace std;
+
+
 
 class Camera
 {

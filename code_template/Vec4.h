@@ -18,6 +18,13 @@ public:
     double getElementAt(int index);
 
     friend std::ostream& operator<<(std::ostream& os, const Vec4& v);
+
+    void perspectiveDivide() {
+        x /= t;
+        y /= t;
+        z /= t;
+        t = 1;
+    }
 };
 
 #endif

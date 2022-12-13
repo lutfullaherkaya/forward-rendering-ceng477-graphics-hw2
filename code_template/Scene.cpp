@@ -4,6 +4,7 @@
 #include <cstring>
 #include <fstream>
 #include <cmath>
+#include <vector>
 
 #include "Scene.h"
 #include "Camera.h"
@@ -20,14 +21,159 @@
 using namespace tinyxml2;
 using namespace std;
 
+struct Box {
+    Vec3 min, max;
 
+    Box() = default;
+
+    Box(Vec3 min, Vec3 max) : min(min), max(max) {}
+
+    bool contains(Vec3 point) {
+        return point.x >= min.x && point.x <= max.x &&
+               point.y >= min.y && point.y <= max.y &&
+               point.z >= min.z && point.z <= max.z;
+    }
+
+    int getWidestAxis() {
+        int widestAxis = 0;
+        for (int axis = 1; axis < 3; ++axis) {
+            if (max[axis] - min[axis] > max[widestAxis] - min[widestAxis]) {
+                widestAxis = axis;
+            }
+        }
+        return widestAxis;
+    }
+};
+
+Box getBoundingBox(vector<Vec3 *> &vertices, Scene &scene) {
+    Vec3 min = {std::numeric_limits<double>::max(), std::numeric_limits<double>::max(),
+                std::numeric_limits<double>::max(), -1};
+    Vec3 max = {-std::numeric_limits<double>::max(), -std::numeric_limits<double>::max(),
+                -std::numeric_limits<double>::max(), -1};
+    for (auto &vertexPtr: vertices) {
+        Vec3 &vertex = *vertexPtr;
+
+        if (vertex.x < min.x) {
+            min.x = vertex.x;
+        }
+        if (vertex.y < min.y) {
+            min.y = vertex.y;
+        }
+        if (vertex.z < min.z) {
+            min.z = vertex.z;
+        }
+        if (vertex.x > max.x) {
+            max.x = vertex.x;
+        }
+        if (vertex.y > max.y) {
+            max.y = vertex.y;
+        }
+        if (vertex.z > max.z) {
+            max.z = vertex.z;
+        }
+
+    }
+    return {min, max};
+}
 
 void ForwardRenderingPipeline::doModelingTransformations() {
 
 }
+
 void ForwardRenderingPipeline::doViewingTransformations() {
+    double camToOriginTTemp[4][4] = {
+            {1, 0, 0, -camera.pos.x},
+            {0, 1, 0, -camera.pos.y},
+            {0, 0, 1, -camera.pos.z},
+            {0, 0, 0, 1}
+    };
+    Matrix4 camToOriginT(camToOriginTTemp);
+
+    double camUvwRotateToAlignWithXyzTTemp[4][4] = {
+            {camera.u.x, camera.u.y, camera.u.z, 0},
+            {camera.v.x, camera.v.y, camera.v.z, 0},
+            {camera.w.x, camera.w.y, camera.w.z, 0},
+            {0,          0,          0,          1}
+    };
+    Matrix4 camUvwRotateToAlignWithXyzT(camUvwRotateToAlignWithXyzTTemp);
+
+    /*When points are multiplied with this matrix, their resulting
+    coordinates will be with respect to the uvw-e coordinate
+    system (i.e. the camera coordinate system)*/
+
+    Box box = getBoundingBox(scene.vertices, scene);// todo: is it true? Should it be the bounding box?
+    double l = box.min.x;
+    double b = box.min.y;
+    double n = -box.min.z;
+    double r = box.max.x;
+    double t = box.max.y;
+    double f = -box.max.z;
+
+    double orthMatrixTemp[4][4] = {
+            {2 / (r - l), 0,           0,            -(r + l) / (r - l)},
+            {0,           2 / (t - b), 0,            -(t + b) / (t - b)},
+            {0,           0,           -2 / (f - n), -(f + n) / (f - n)},
+            {0,           0,           0,            1}
+    };
+    Matrix4 orthMatrix(orthMatrixTemp);
+
+    double p2oMatrixTemp[4][4] = {
+            {n, 0, 0,     0},
+            {0, n, 0,     0},
+            {0, 0, f + n, f * n},
+            {0, 0, -1,    0}
+    };
+    Matrix4 p2oMatrix(p2oMatrixTemp);
+
+    Matrix4 perMatrix = multiplyMatrixWithMatrix(orthMatrix, p2oMatrix);
+
+    double nx = camera.horRes;
+    double ny = camera.verRes;
+    double vpMatrixTemp[3][4] = {
+            {nx / 2.0, 0,      0,   (nx - 1) / 2},
+            {0,        ny / 2, 0,   (ny - 1) / 2},
+            {0,        0,      0.5, 0.5}
+    };
+    Matrix4 vpMatrix(vpMatrixTemp);
+
+    /**
+     * denemek için
+     * the first vertex of first triangle of empty_box.xml
+     * -1.0 -1.0 1.0
+     * after rotation in y axis by 45 degrees https://keisan.casio.com/exec/system/15362817755710
+     * 0 -1 1.414213562
+     * after translation id 2
+     * 3 -4 -4.585786438
+     * after scaling by id 1
+     * 15.6 -20.8 -23.8460894776
+     */
+    for (auto &mesh: scene.meshes) {
+        for (auto &triangle: mesh->triangles) {
+            std::vector < Vec3 * > vertices = {&triangle.vertex1, &triangle.vertex2, &triangle.vertex3};
+            for (auto &vertexPtr: vertices) {
+                Vec3 &vertex = *vertexPtr;
+                Vec4 vertex4(vertex.x, vertex.y, vertex.z, 1, -1);
+                /*vertex4.x = 15.6;
+                vertex4.y = -20.8;
+                vertex4.z = -23.8460894776;*/
+                vertex4 = multiplyMatrixWithVec4(camToOriginT, vertex4);
+                vertex4 = multiplyMatrixWithVec4(camUvwRotateToAlignWithXyzT, vertex4);
+                if (camera.projectionType == PROJ_ORTHO) {
+                    vertex4 = multiplyMatrixWithVec4(orthMatrix, vertex4);
+                } else if (camera.projectionType == PROJ_PERSPECTIVE) {
+                    vertex4 = multiplyMatrixWithVec4(perMatrix, vertex4);
+                }
+                vertex4.perspectiveDivide();
+                vertex4 = multiplyMatrixWithVec4(vpMatrix, vertex4);
+                vertex.x = vertex4.x;
+                vertex.y = vertex4.y;
+                vertex.z = vertex4.z;
+            }
+        }
+    }
 
 }
+
 void ForwardRenderingPipeline::doRasterization() {
 
 }
