@@ -77,7 +77,108 @@ Box getBoundingBox(vector<Vec3 *> &vertices, Scene &scene) {
 }
 
 void ForwardRenderingPipeline::doModelingTransformations() {
+    for (auto mesh : scene.meshes) {
+        int numberOfTransformations = mesh->numberOfTransformations;
+        Matrix4 transformationMatrix = getIdentityMatrix();
+        for (auto triangle: mesh->triangles) {
+            Vec3 *vertex1 = triangle->vertex1;
+            Vec3 *vertex2 = triangle->vertex2;
+            Vec3 *vertex3 = triangle->vertex3;
 
+            for (int i = 0; i < numberOfTransformations; i++) {
+                auto transformationId = mesh -> transformationIds[i]-1;
+                auto transformationType = mesh -> transformationTypes[i];
+
+                if(transformationType == 't')
+                {
+                    auto tx = scene.translations[transformationId]->tx;
+                    auto ty = scene.translations[transformationId]->ty;
+                    auto tz = scene.translations[transformationId]->tz;
+
+                    double translation_matrix[4][4] = {
+                            {1, 0, 0, tx},
+                            {0, 1, 0, ty},
+                            {0, 0, 1, tz},
+                            {0, 0, 0, 1}
+                    };
+                    transformationMatrix = multiplyMatrixWithMatrix(translation_matrix,transformationMatrix);
+
+                }
+                else if(transformationType == 's')
+                {
+                    auto sx = scene.scalings[transformationId]->sx;
+                    auto sy = scene.scalings[transformationId]->sy;
+                    auto sz = scene.scalings[transformationId]->sz;
+
+                    double scaling_matrix[4][4] = {
+                            {sx, 0, 0, 0},
+                            {0, sy, 0, 0},
+                            {0, 0, sz, 0},
+                            {0, 0, 0, 1}
+                    };
+                    transformationMatrix = multiplyMatrixWithMatrix(scaling_matrix,transformationMatrix);
+
+                }
+                else if(transformationType == 'r')
+                {
+                    auto rAngle = scene.rotations[transformationId]->angle;
+                    auto rx = scene.rotations[transformationId]->ux;
+                    auto ry = scene.rotations[transformationId]->uy;
+                    auto rz = scene.rotations[transformationId]->uz;
+                    // initialize u, declare v and w vectors
+                    Vec3 u(rx,ry,rz,-1),v,w;
+                    //finding v vector
+                    auto minComponent = min(abs(rx),min(abs(ry),abs(rz)));
+                    if(minComponent == abs(rx))
+                    {
+                        v = Vec3(0,-rz,ry,-1);
+                    }
+                    else if(minComponent == abs(ry))
+                    {
+                        v = Vec3(-rz,0,rx,-1);
+                    }
+                    else
+                    {
+                        v = Vec3(-ry,rx,0,-1);
+                    }
+                    //finding w vector
+                    w = crossProduct(u,v);
+                    //normalize v,w
+                    v = normalize(v);
+                    w = normalize(w);
+                    //finding rotation matrix
+                    double mInv[4][4] = {
+                            {u.x, v.x, w.x, 0},
+                            {u.y, v.y, w.y, 0},
+                            {u.z, v.z, w.z, 0},
+                            {0, 0, 0, 1}
+                    };
+
+                    double m[4][4] = {
+                            {u.x, u.y, u.z, 0},
+                            {v.x, v.y, v.z, 0},
+                            {w.x, w.y, w.z, 0},
+                            {0, 0, 0, 1}
+                    };
+
+                    double xRotationMatrix[4][4] = {
+                            {1, 0, 0, 0},
+                            {0, cos(rAngle), -sin(rAngle), 0},
+                            {0, sin(rAngle), cos(rAngle), 0},
+                            {0, 0, 0, 1}
+                    };
+                    Matrix4 xRotation_m = multiplyMatrixWithMatrix(xRotationMatrix,m);
+                    Matrix4 mInv_xRotation_m = multiplyMatrixWithMatrix(mInv,xrotation_m);
+                    transformationMatrix = multiplyMatrixWithMatrix(mInv_xRotation_m,transformationMatrix);
+                }
+                else
+                {
+                    cout << "Error: Unknown transformation type" << endl;
+                }
+            }
+
+        }
+    }
 }
 
 void ForwardRenderingPipeline::doViewingTransformations() {
