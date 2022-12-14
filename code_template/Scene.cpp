@@ -109,7 +109,7 @@ void ForwardRenderingPipeline::doModelingTransformations() {
         }
 
         for (auto &triangle: mesh->triangles) {
-            std::vector < Vec3 * > vertices = {&triangle.vertex1, &triangle.vertex2, &triangle.vertex3};
+            std::vector<Vec3 *> vertices = {&triangle.vertex1, &triangle.vertex2, &triangle.vertex3};
             for (auto &vertexPtr: vertices) {
                 Vec3 &vertex = *vertexPtr;
                 Vec4 vertices4(vertex.x, vertex.y, vertex.z, 1, -1);
@@ -192,7 +192,7 @@ void ForwardRenderingPipeline::doViewingTransformations() {
      */
     for (auto &mesh: scene.meshes) {
         for (auto &triangle: mesh->triangles) {
-            std::vector < Vec3 * > vertices = {&triangle.vertex1, &triangle.vertex2, &triangle.vertex3};
+            std::vector<Vec3 *> vertices = {&triangle.vertex1, &triangle.vertex2, &triangle.vertex3};
             for (auto &vertexPtr: vertices) {
                 Vec3 &vertex = *vertexPtr;
                 Vec4 vertex4(vertex.x, vertex.y, vertex.z, 1, -1);
@@ -218,8 +218,91 @@ void ForwardRenderingPipeline::doViewingTransformations() {
 }
 
 void ForwardRenderingPipeline::doRasterization() {
+    for (auto &mesh: scene.meshes) {
+        for (auto &triangle: mesh->triangles) {
+            if (mesh->type == WIREFRAME) {
+                painter.drawLine(triangle.vertex1, triangle.vertex2);
+                painter.drawLine(triangle.vertex2, triangle.vertex3);
+                painter.drawLine(triangle.vertex3, triangle.vertex1);
+            } else {
+                // todo:
+            }
+
+        }
+    }
+}
+
+ForwardRenderingPipeline::ForwardRenderingPipeline(Scene &scene1, Camera &camera1) : scene(scene1),
+                                                                                     camera(camera1),
+                                                                                     painter(scene, camera) {
+
 
 }
+
+void Painter::draw(int x, int y, int colorId) {
+    if (onCanvas(x, y)) {
+        scene.image[x][y] = *scene.colorsOfVertices[colorId - 1];
+    }
+
+}
+
+void Painter::drawLine(Vec3 &src, Vec3 &dest) {
+    // midpoint algorithm
+    int x1 = src.x;
+    int x2 = dest.x;
+    int y1 = src.y;
+    int y2 = dest.y;
+
+    // todo: put x,y to int point
+    int dy = y2 - y1;
+    int dx = x2 - x1;
+    double m = (double)dy / dx;
+    if (dx < 0) {
+        drawLine(dest, src);
+    } else {
+        int slopeSign;
+        if (dy < 0) {
+            slopeSign = -1;
+            dy = -dy;
+        } else {
+            slopeSign = 1;
+        }
+        if (-1 < m && m < 1) {
+            int y = y1;
+            int d = 2 * -dy + dx;
+            for (int x = x1; x < x2; ++x) {
+                draw(x, y, src.colorId);
+                d += 2 * -dy;
+                if (d < 0) { // choose NE
+                    y += slopeSign;
+                    d += 2 * dx;
+                } else {}// choose E
+            }
+        } else {
+            int x = x1;
+            int d = 2 * -dx + dy;
+            for (int y = y1; y != y2; y += slopeSign) {
+                draw(x, y, src.colorId);
+                d += 2 * -dx;
+                if (d < 0) { // choose NE
+                    x++;
+                    d += 2 * dy;
+                } else {}// choose E
+            }
+        }
+    }
+
+
+}
+
+bool Painter::onCanvas(int x, int y) const {
+    return 0 < x && x < camera.horRes &&
+           0 < y && y < camera.verRes;
+}
+
+
+Painter::Painter(Scene &scene, Camera &camera) : scene(scene), camera(camera) {}
+
 
 /*
 	Transformations, clipping, culling, rasterization are done here.
@@ -454,7 +537,7 @@ Scene::Scene(const char *xmlPath) {
 void Scene::initializeImage(Camera *camera) {
     if (this->image.empty()) {
         for (int i = 0; i < camera->horRes; i++) {
-            vector <Color> rowOfColors;
+            vector<Color> rowOfColors;
 
             for (int j = 0; j < camera->verRes; j++) {
                 rowOfColors.push_back(this->backgroundColor);

@@ -26,7 +26,7 @@ public:
     Color backgroundColor;
     bool cullingEnabled;
 
-    vector <vector<Color>> image;
+    vector<vector<Color>> image;
     vector<Camera *> cameras;
     vector<Vec3 *> vertices;
     vector<Color *> colorsOfVertices;
@@ -48,14 +48,27 @@ public:
     void convertPPMToPNG(string ppmFileName, int osType);
 };
 
-class ForwardRenderingPipeline {
+class Painter {
 public:
     Scene &scene;
     Camera &camera;
 
-    ForwardRenderingPipeline(Scene &scene, Camera &camera) : scene(scene), camera(camera) {
+    Painter(Scene &scene, Camera &camera);
 
-    }
+    void draw(int x, int y, int colorId);
+
+    void drawLine(Vec3 &src, Vec3 &dest);
+
+    bool onCanvas(int x, int y) const;
+};
+
+class ForwardRenderingPipeline {
+public:
+    Scene &scene;
+    Camera &camera;
+    Painter painter;
+
+    ForwardRenderingPipeline(Scene &scene, Camera &camera);
 
     void doModelingTransformations();
 

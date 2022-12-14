@@ -5,6 +5,10 @@
 #include "Triangle.h"
 #include <iostream>
 
+#define WIREFRAME 0
+#define SOLID 1
+
+
 using namespace std;
 
 class Mesh {

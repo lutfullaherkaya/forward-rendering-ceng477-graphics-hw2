@@ -3,7 +3,7 @@ SOURCE	= Camera.cpp Color.cpp Helpers.cpp Main.cpp Matrix4.cpp Mesh.cpp Rotation
 HEADER	= Camera.h Color.h Helpers.h Matrix4.h Mesh.h Rotation.h Scaling.h Scene.h tinyxml2.h Translation.h Triangle.h Vec3.h Vec4.h
 OUT	= rasterizer
 CC	 = g++
-FLAGS	 = -g -c -Wall
+FLAGS	 = -g -c -Wall -O3
 LFLAGS	 = -lm
 
 all: $(OBJS)
