@@ -239,9 +239,9 @@ ForwardRenderingPipeline::ForwardRenderingPipeline(Scene &scene1, Camera &camera
 
 }
 
-void Painter::draw(int x, int y, int colorId) {
+void Painter::draw(int x, int y, Color color) {
     if (onCanvas(x, y)) {
-        scene.image[x][y] = *scene.colorsOfVertices[colorId - 1];
+        scene.image[x][y] = color;
     }
 
 }
@@ -256,33 +256,41 @@ void Painter::drawLine(Vec3 &src, Vec3 &dest) {
     // todo: put x,y to int point
     int dy = y2 - y1;
     int dx = x2 - x1;
-    double m = (double)dy / dx;
+    double m = (double) dy / dx;
     if (dx < 0) {
         drawLine(dest, src);
     } else {
+
         int slopeSign;
+
         if (dy < 0) {
             slopeSign = -1;
             dy = -dy;
         } else {
             slopeSign = 1;
         }
+
+        const Color &c0 = *scene.colorsOfVertices[src.colorId-1];
+        const Color &c1 = *scene.colorsOfVertices[dest.colorId-1];
         if (-1 < m && m < 1) {
+
             int y = y1;
             int d = 2 * -dy + dx;
             for (int x = x1; x < x2; ++x) {
-                draw(x, y, src.colorId);
+                double alpha = (double)(x - x1) / (x2 - x1);
+                draw(x, y, c0.interpolate(c1, alpha));
                 d += 2 * -dy;
                 if (d < 0) { // choose NE
                     y += slopeSign;
                     d += 2 * dx;
-                } else {}// choose E
+                } else {}// choose
             }
         } else {
             int x = x1;
             int d = 2 * -dx + dy;
             for (int y = y1; y != y2; y += slopeSign) {
-                draw(x, y, src.colorId);
+                double alpha = (double)(y - y1) / (y2 - y1);
+                draw(x, y, c0.interpolate(c1, alpha));
                 d += 2 * -dx;
                 if (d < 0) { // choose NE
                     x++;

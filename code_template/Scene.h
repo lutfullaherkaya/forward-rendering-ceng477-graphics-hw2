@@ -55,7 +55,7 @@ public:
 
     Painter(Scene &scene, Camera &camera);
 
-    void draw(int x, int y, int colorId);
+    void draw(int x, int y, Color color);
 
     void drawLine(Vec3 &src, Vec3 &dest);
 
@@ -77,7 +77,6 @@ public:
     void doRasterization();
 
 };
-
 
 
 #endif
