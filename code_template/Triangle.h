@@ -21,6 +21,13 @@ public:
     void setFirstVertexId(int vid);
     void setSecondVertexId(int vid);
     void setThirdVertexId(int vid);
+
+    bool contains(int x, int y);
+
+    int f01(int x, int y);
+    int f12(int x, int y);
+    int f20(int x, int y);
+
 };
 
 

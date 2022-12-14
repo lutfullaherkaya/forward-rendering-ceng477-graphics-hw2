@@ -225,7 +225,7 @@ void ForwardRenderingPipeline::doRasterization() {
                 painter.drawLine(triangle.vertex2, triangle.vertex3);
                 painter.drawLine(triangle.vertex3, triangle.vertex1);
             } else {
-                // todo:
+                painter.drawTriangle(triangle);
             }
 
         }
@@ -253,7 +253,6 @@ void Painter::drawLine(Vec3 &src, Vec3 &dest) {
     int y1 = src.y;
     int y2 = dest.y;
 
-    // todo: put x,y to int point
     int dy = y2 - y1;
     int dx = x2 - x1;
     double m = (double) dy / dx;
@@ -270,14 +269,14 @@ void Painter::drawLine(Vec3 &src, Vec3 &dest) {
             slopeSign = 1;
         }
 
-        const Color &c0 = *scene.colorsOfVertices[src.colorId-1];
-        const Color &c1 = *scene.colorsOfVertices[dest.colorId-1];
+        const Color &c0 = *scene.colorsOfVertices[src.colorId - 1];
+        const Color &c1 = *scene.colorsOfVertices[dest.colorId - 1];
         if (-1 < m && m < 1) {
 
             int y = y1;
             int d = 2 * -dy + dx;
             for (int x = x1; x < x2; ++x) {
-                double alpha = (double)(x - x1) / (x2 - x1);
+                double alpha = (double) (x - x1) / (x2 - x1);
                 draw(x, y, c0.interpolate(c1, alpha));
                 d += 2 * -dy;
                 if (d < 0) { // choose NE
@@ -289,7 +288,7 @@ void Painter::drawLine(Vec3 &src, Vec3 &dest) {
             int x = x1;
             int d = 2 * -dx + dy;
             for (int y = y1; y != y2; y += slopeSign) {
-                double alpha = (double)(y - y1) / (y2 - y1);
+                double alpha = (double) (y - y1) / (y2 - y1);
                 draw(x, y, c0.interpolate(c1, alpha));
                 d += 2 * -dx;
                 if (d < 0) { // choose NE
@@ -310,6 +309,26 @@ bool Painter::onCanvas(int x, int y) const {
 
 
 Painter::Painter(Scene &scene, Camera &camera) : scene(scene), camera(camera) {}
+
+void Painter::drawTriangle(Triangle &triangle) {
+    int left = std::min(triangle.vertex1.x, std::min(triangle.vertex2.x, triangle.vertex3.x));
+    int right = std::max(triangle.vertex1.x, std::max(triangle.vertex2.x, triangle.vertex3.x));
+    int top = std::min(triangle.vertex1.y, std::min(triangle.vertex2.y, triangle.vertex3.y));
+    int bottom = std::max(triangle.vertex1.y, std::max(triangle.vertex2.y, triangle.vertex3.y));
+    const Color &c0 = *scene.colorsOfVertices[triangle.vertex1.colorId - 1];
+    const Color &c1 = *scene.colorsOfVertices[triangle.vertex2.colorId - 1];
+    const Color &c2 = *scene.colorsOfVertices[triangle.vertex3.colorId - 1];
+    for (int x = left; x <= right; ++x) {
+        for (int y = top; y <= bottom; ++y) {
+            double alpha = triangle.f12(x, y) / (double) triangle.f12(triangle.vertex1.x, triangle.vertex1.y);
+            double beta = triangle.f20(x, y) / (double) triangle.f20(triangle.vertex2.x, triangle.vertex2.y);
+            double ceta = triangle.f01(x, y) / (double) triangle.f01(triangle.vertex3.x, triangle.vertex3.y);
+            if (alpha >= 0 && beta >= 0 && ceta >= 0) {
+                draw(x, y, c0.interpolate(c1, c2, alpha, beta, ceta));
+            }
+        }
+    }
+}
 
 
 /*

@@ -59,6 +59,8 @@ public:
 
     void drawLine(Vec3 &src, Vec3 &dest);
 
+    void drawTriangle(Triangle &triangle);
+
     bool onCanvas(int x, int y) const;
 };
 

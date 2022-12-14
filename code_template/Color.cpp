@@ -30,3 +30,10 @@ Color Color::interpolate(const Color &c, double alpha) const {
                  oneMinusAlpha * b + alpha * c.b
     );
 }
+
+Color Color::interpolate(const Color &c1, const Color &c2, double alpha, double beta, double ceta) const {
+    return Color(alpha * r + beta * c1.r + ceta * c2.r,
+                 alpha * g + beta * c1.g + ceta * c2.g,
+                 alpha * b + beta * c1.b + ceta * c2.b
+    );
+}
