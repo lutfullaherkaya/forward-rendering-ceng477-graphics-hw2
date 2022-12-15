@@ -72,6 +72,8 @@ public:
 
     ForwardRenderingPipeline(Scene &scene, Camera &camera);
 
+    bool isCullingExists(Triangle &triangle);
+
     void doModelingTransformations();
 
     void doViewingTransformations();
