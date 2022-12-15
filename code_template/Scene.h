@@ -72,6 +72,10 @@ public:
 
     ForwardRenderingPipeline(Scene &scene, Camera &camera);
 
+    bool isVisible(double den, double num, double& t_E, double& t_L);
+
+    bool clipping(Vec3& vertex1, Vec3& vertex2);
+
     bool isCullingExists(Triangle &triangle);
 
     void doModelingTransformations();

@@ -207,10 +207,31 @@ void ForwardRenderingPipeline::doViewingTransformations() {
                     vertex4 = multiplyMatrixWithVec4(perMatrix, vertex4);
                 }
                 vertex4.perspectiveDivide();
-                vertex4 = multiplyMatrixWithVec4(vpMatrix, vertex4);
-                vertex.x = vertex4.x;
-                vertex.y = vertex4.y;
-                vertex.z = vertex4.z;
+
+                if(scene.cullingEnabled && isCullingExists(triangle)){//Backface Culling
+                    continue;
+                }
+
+                if (mesh->type == WIREFRAME) {
+                    bool line1Visible = clipping(triangle.vertex1, triangle.vertex2);
+                    bool line2Visible = clipping(triangle.vertex2, triangle.vertex3);
+                    bool line3Visible = clipping(triangle.vertex3, triangle.vertex1);
+                    vertex4 = multiplyMatrixWithVec4(vpMatrix, vertex4);
+                    vertex.x = vertex4.x;
+                    vertex.y = vertex4.y;
+                    vertex.z = vertex4.z;
+                    painter.drawLine(triangle.vertex1, triangle.vertex2);
+                    painter.drawLine(triangle.vertex2, triangle.vertex3);
+                    painter.drawLine(triangle.vertex3, triangle.vertex1);
+                } else {
+                    vertex4 = multiplyMatrixWithVec4(vpMatrix, vertex4);
+                    vertex.x = vertex4.x;
+                    vertex.y = vertex4.y;
+                    vertex.z = vertex4.z;
+                    painter.drawTriangle(triangle);
+                }
+
+
             }
         }
     }
@@ -219,22 +240,25 @@ void ForwardRenderingPipeline::doViewingTransformations() {
 
 void ForwardRenderingPipeline::doRasterization() {
 
-    bool cullingEnabled = scene.cullingEnabled;
+//    bool cullingEnabled = scene.cullingEnabled;
 
     for (auto &mesh: scene.meshes) {
         for (auto &triangle: mesh->triangles) {
 
-            if(cullingEnabled && isCullingExists(triangle)){
-                continue;
-            }
-
-            if (mesh->type == WIREFRAME) {
-                painter.drawLine(triangle.vertex1, triangle.vertex2);
-                painter.drawLine(triangle.vertex2, triangle.vertex3);
-                painter.drawLine(triangle.vertex3, triangle.vertex1);
-            } else {
-                painter.drawTriangle(triangle);
-            }
+//            if(cullingEnabled && isCullingExists(triangle)){//Backface Culling
+//                continue;
+//            }
+//
+//            if (mesh->type == WIREFRAME) {
+//                bool line1Visible = clipping(triangle.vertex1, triangle.vertex2);
+//                bool line2Visible = clipping(triangle.vertex2, triangle.vertex3);
+//                bool line3Visible = clipping(triangle.vertex3, triangle.vertex1);
+//                painter.drawLine(triangle.vertex1, triangle.vertex2);
+//                painter.drawLine(triangle.vertex2, triangle.vertex3);
+//                painter.drawLine(triangle.vertex3, triangle.vertex1);
+//            } else {
+//                painter.drawTriangle(triangle);
+//            }
 
         }
     }
@@ -259,6 +283,87 @@ bool ForwardRenderingPipeline::isCullingExists(Triangle &triangle) {
     return culling_exists;
 }
 
+bool ForwardRenderingPipeline::isVisible(double den, double num, double& t_E, double& t_L) {
+    double t = num/den;
+    if(den > 0){
+        if (t > t_L){
+            return false;
+        }
+        if (t > t_E){
+            t_E = t;
+        }
+    }
+    else if(den < 0){
+        if (t < t_E){
+            return false;
+        }
+        if (t < t_L){
+            t_L = t;
+        }
+    }
+    else if(num > 0){
+        return false;
+    }
+    return true;
+}
+
+
+bool ForwardRenderingPipeline::clipping(Vec3& vertex1, Vec3& vertex2) { //Liang-Barsky Algorithm is implemented
+    Color *color1 = scene.colorsOfVertices[vertex1.colorId-1];
+    Color *color2 = scene.colorsOfVertices[vertex2.colorId-1];
+
+    double t_E = 0;
+    double t_L = 1;
+
+    double dx = vertex2.x - vertex1.x;
+    double dy = vertex2.y - vertex1.y;
+    double dz = vertex2.z - vertex1.z;
+
+    Color dc;
+    dc.r = color2->r - color1->r;
+    dc.g = color2->g - color1->g;
+    dc.b = color2->b - color1->b;
+
+    double x_min = -1;
+    double x_max = 1;
+    double y_min = -1;
+    double y_max = 1;
+    double z_min = -1;
+    double z_max = 1;
+
+    bool lineVisible = true;
+    if(isVisible(dx, x_min - vertex1.x, t_E, t_L)){//left
+        if (isVisible(-dx, vertex1.x - x_max, t_E, t_L)){//right
+            if (isVisible(dy, y_min - vertex1.y, t_E, t_L)){//bottom
+                if (isVisible(-dy, vertex1.y - y_max, t_E, t_L)){//top
+                    if (isVisible(dz, z_min - vertex1.z, t_E, t_L)){//front
+                        if (isVisible(-dz, vertex1.z - z_max, t_E, t_L)){//back
+                            lineVisible = true;
+                            if (t_L < 1){
+                                vertex2.x = vertex1.x + t_L * dx;
+                                vertex2.y = vertex1.y + t_L * dy;
+                                vertex2.z = vertex1.z + t_L * dz;
+                                color2->r = color1->r + t_L * dc.r;
+                                color2->g = color1->g + t_L * dc.g;
+                                color2->b = color1->b + t_L * dc.b;
+                            }
+                            if (t_E > 0){
+                                vertex1.x = vertex1.x + t_E * dx;
+                                vertex1.y = vertex1.y + t_E * dy;
+                                vertex1.z = vertex1.z + t_E * dz;
+                                color1->r = color1->r + t_E * dc.r;
+                                color1->g = color1->g + t_E * dc.g;
+                                color1->b = color1->b + t_E * dc.b;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return lineVisible;
+}
 
 void Painter::draw(int x, int y, Color color) {
     if (onCanvas(x, y)) {
