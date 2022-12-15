@@ -58,6 +58,7 @@ public:
     void draw(int x, int y, Color color);
 
     void drawLine(Vec3 &src, Vec3 &dest);
+    void drawLine(Vec4 &src, Vec4 &dest);
 
     void drawTriangle(Triangle &triangle);
 
@@ -74,7 +75,7 @@ public:
 
     bool isVisible(double den, double num, double& t_E, double& t_L);
 
-    bool clipping(Vec3& vertex1, Vec3& vertex2);
+    bool clipping(Vec4& vertex1, Vec4& vertex2);
 
     bool isCullingExists(Triangle &triangle);
 

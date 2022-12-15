@@ -192,46 +192,91 @@ void ForwardRenderingPipeline::doViewingTransformations() {
      */
     for (auto &mesh: scene.meshes) {
         for (auto &triangle: mesh->triangles) {
-            std::vector<Vec3 *> vertices = {&triangle.vertex1, &triangle.vertex2, &triangle.vertex3};
-            for (auto &vertexPtr: vertices) {
-                Vec3 &vertex = *vertexPtr;
-                Vec4 vertex4(vertex.x, vertex.y, vertex.z, 1, -1);
-                /*vertex4.x = 15.6;
-                vertex4.y = -20.8;
-                vertex4.z = -23.8460894776;*/
-                vertex4 = multiplyMatrixWithVec4(camToOriginT, vertex4);
-                vertex4 = multiplyMatrixWithVec4(camUvwRotateToAlignWithXyzT, vertex4);
-                if (camera.projectionType == PROJ_ORTHO) {
-                    vertex4 = multiplyMatrixWithVec4(orthMatrix, vertex4);
-                } else if (camera.projectionType == PROJ_PERSPECTIVE) {
-                    vertex4 = multiplyMatrixWithVec4(perMatrix, vertex4);
-                }
-                vertex4.perspectiveDivide();
+            Vec4 vertex1(triangle.vertex1.x, triangle.vertex1.y, triangle.vertex1.z, 1, triangle.vertex1.colorId);
+            Vec4 vertex2(triangle.vertex2.x, triangle.vertex2.y, triangle.vertex2.z, 1, triangle.vertex2.colorId);
+            Vec4 vertex3(triangle.vertex3.x, triangle.vertex3.y, triangle.vertex3.z, 1, triangle.vertex3.colorId);
 
-                if(scene.cullingEnabled && isCullingExists(triangle)){//Backface Culling
+            vertex1 = multiplyMatrixWithVec4(camToOriginT, vertex1);
+            vertex1 = multiplyMatrixWithVec4(camUvwRotateToAlignWithXyzT, vertex1);
+            vertex2 = multiplyMatrixWithVec4(camToOriginT, vertex2);
+            vertex2 = multiplyMatrixWithVec4(camUvwRotateToAlignWithXyzT, vertex2);
+            vertex3 = multiplyMatrixWithVec4(camToOriginT, vertex3);
+            vertex3 = multiplyMatrixWithVec4(camUvwRotateToAlignWithXyzT, vertex3);
+
+
+            if (camera.projectionType == PROJ_ORTHO) {
+                vertex1 = multiplyMatrixWithVec4(orthMatrix, vertex1);
+                vertex2 = multiplyMatrixWithVec4(orthMatrix, vertex2);
+                vertex3 = multiplyMatrixWithVec4(orthMatrix, vertex3);
+            } else if (camera.projectionType == PROJ_PERSPECTIVE) {
+                vertex1 = multiplyMatrixWithVec4(perMatrix, vertex1);
+                vertex2 = multiplyMatrixWithVec4(perMatrix, vertex2);
+                vertex3 = multiplyMatrixWithVec4(perMatrix, vertex3);
+            }
+
+
+            if (mesh->type != WIREFRAME) {
+                vertex1.perspectiveDivide();
+                vertex2.perspectiveDivide();
+                vertex3.perspectiveDivide();
+                vertex1 = multiplyMatrixWithVec4(vpMatrix, vertex1);
+                vertex2 = multiplyMatrixWithVec4(vpMatrix, vertex2);
+                vertex3 = multiplyMatrixWithVec4(vpMatrix, vertex3);
+                triangle.vertex1 = Vec3(vertex1.x, vertex1.y, vertex1.z, vertex1.colorId);
+                triangle.vertex2 = Vec3(vertex2.x, vertex2.y, vertex2.z, vertex2.colorId);
+                triangle.vertex3 = Vec3(vertex3.x, vertex3.y, vertex3.z, vertex3.colorId);
+                if (scene.cullingEnabled && isCullingExists(triangle)) {//Backface Culling
+                    continue;
+                }
+                painter.drawTriangle(triangle);
+            }
+
+            if (mesh->type == WIREFRAME) {
+                std::pair<Vec4, Vec4> line12(vertex1, vertex2);
+                std::pair<Vec4, Vec4> line23(vertex2, vertex3);
+                std::pair<Vec4, Vec4> line31(vertex3, vertex1);
+
+                vertex1.perspectiveDivide();
+                vertex2.perspectiveDivide();
+                vertex3.perspectiveDivide();
+                vertex1 = multiplyMatrixWithVec4(vpMatrix, vertex1);
+                vertex2 = multiplyMatrixWithVec4(vpMatrix, vertex2);
+                vertex3 = multiplyMatrixWithVec4(vpMatrix, vertex3);
+                triangle.vertex1 = Vec3(vertex1.x, vertex1.y, vertex1.z, vertex1.colorId);
+                triangle.vertex2 = Vec3(vertex2.x, vertex2.y, vertex2.z, vertex2.colorId);
+                triangle.vertex3 = Vec3(vertex3.x, vertex3.y, vertex3.z, vertex3.colorId);
+                if (scene.cullingEnabled && isCullingExists(triangle)) {//Backface Culling
                     continue;
                 }
 
-                if (mesh->type == WIREFRAME) {
-                    bool line1Visible = clipping(triangle.vertex1, triangle.vertex2);
-                    bool line2Visible = clipping(triangle.vertex2, triangle.vertex3);
-                    bool line3Visible = clipping(triangle.vertex3, triangle.vertex1);
-                    vertex4 = multiplyMatrixWithVec4(vpMatrix, vertex4);
-                    vertex.x = vertex4.x;
-                    vertex.y = vertex4.y;
-                    vertex.z = vertex4.z;
-                    painter.drawLine(triangle.vertex1, triangle.vertex2);
-                    painter.drawLine(triangle.vertex2, triangle.vertex3);
-                    painter.drawLine(triangle.vertex3, triangle.vertex1);
-                } else {
-                    vertex4 = multiplyMatrixWithVec4(vpMatrix, vertex4);
-                    vertex.x = vertex4.x;
-                    vertex.y = vertex4.y;
-                    vertex.z = vertex4.z;
-                    painter.drawTriangle(triangle);
-                }
+                bool line1Visible = clipping(line12.first, line12.second);
+                bool line2Visible = clipping(line23.first, line23.second);
+                bool line3Visible = clipping(line31.first, line31.second);
 
 
+
+                line12.first.perspectiveDivide();
+                line12.second.perspectiveDivide();
+                line23.first.perspectiveDivide();
+                line23.second.perspectiveDivide();
+                line31.first.perspectiveDivide();
+                line31.second.perspectiveDivide();
+                // L01
+                line12.first = multiplyMatrixWithVec4(vpMatrix, line12.first);
+                line12.second = multiplyMatrixWithVec4(vpMatrix, line12.second);
+
+                // L12
+                line23.first = multiplyMatrixWithVec4(vpMatrix, line23.first);
+                line23.second = multiplyMatrixWithVec4(vpMatrix, line23.second);
+
+                // L20
+                line31.first = multiplyMatrixWithVec4(vpMatrix, line31.first);
+                line31.second = multiplyMatrixWithVec4(vpMatrix, line31.second);
+
+
+                if (line1Visible) painter.drawLine(line12.first, line12.second);
+                if (line2Visible) painter.drawLine(line23.first, line23.second);
+                if (line3Visible) painter.drawLine(line31.first, line31.second);
             }
         }
     }
@@ -239,29 +284,26 @@ void ForwardRenderingPipeline::doViewingTransformations() {
 }
 
 void ForwardRenderingPipeline::doRasterization() {
-
-//    bool cullingEnabled = scene.cullingEnabled;
-
-    for (auto &mesh: scene.meshes) {
+/*    for (auto &mesh: scene.meshes) {
         for (auto &triangle: mesh->triangles) {
 
-//            if(cullingEnabled && isCullingExists(triangle)){//Backface Culling
-//                continue;
-//            }
-//
-//            if (mesh->type == WIREFRAME) {
-//                bool line1Visible = clipping(triangle.vertex1, triangle.vertex2);
-//                bool line2Visible = clipping(triangle.vertex2, triangle.vertex3);
-//                bool line3Visible = clipping(triangle.vertex3, triangle.vertex1);
-//                painter.drawLine(triangle.vertex1, triangle.vertex2);
-//                painter.drawLine(triangle.vertex2, triangle.vertex3);
-//                painter.drawLine(triangle.vertex3, triangle.vertex1);
-//            } else {
-//                painter.drawTriangle(triangle);
-//            }
+            if (scene.cullingEnabled && isCullingExists(triangle)) {//Backface Culling
+                continue;
+            }
+
+            if (mesh->type == WIREFRAME) {
+                bool line1Visible = clipping(triangle.vertex1, triangle.vertex2);
+                bool line2Visible = clipping(triangle.vertex2, triangle.vertex3);
+                bool line3Visible = clipping(triangle.vertex3, triangle.vertex1);
+                painter.drawLine(triangle.vertex1, triangle.vertex2);
+                painter.drawLine(triangle.vertex2, triangle.vertex3);
+                painter.drawLine(triangle.vertex3, triangle.vertex1);
+            } else {
+                //painter.drawTriangle(triangle);
+            }
 
         }
-    }
+    }*/
 }
 
 ForwardRenderingPipeline::ForwardRenderingPipeline(Scene &scene1, Camera &camera1) : scene(scene1),
@@ -279,38 +321,36 @@ bool ForwardRenderingPipeline::isCullingExists(Triangle &triangle) {
     Vec3 v1 = subtractVec3(vertex2, vertex1);
     Vec3 v2 = subtractVec3(vertex3, vertex1);
     Vec3 normal = normalizeVec3(crossProductVec3(v1, v2));
-    bool culling_exists = dotProductVec3(normal,vertex1) < 0;
+    bool culling_exists = dotProductVec3(normal, vertex1) < 0;
     return culling_exists;
 }
 
-bool ForwardRenderingPipeline::isVisible(double den, double num, double& t_E, double& t_L) {
-    double t = num/den;
-    if(den > 0){
-        if (t > t_L){
+bool ForwardRenderingPipeline::isVisible(double den, double num, double &t_E, double &t_L) {
+    double t = num / den;
+    if (den > 0) {
+        if (t > t_L) {
             return false;
         }
-        if (t > t_E){
+        if (t > t_E) {
             t_E = t;
         }
-    }
-    else if(den < 0){
-        if (t < t_E){
+    } else if (den < 0) {
+        if (t < t_E) {
             return false;
         }
-        if (t < t_L){
+        if (t < t_L) {
             t_L = t;
         }
-    }
-    else if(num > 0){
+    } else if (num > 0) {
         return false;
     }
     return true;
 }
 
 
-bool ForwardRenderingPipeline::clipping(Vec3& vertex1, Vec3& vertex2) { //Liang-Barsky Algorithm is implemented
-    Color *color1 = scene.colorsOfVertices[vertex1.colorId-1];
-    Color *color2 = scene.colorsOfVertices[vertex2.colorId-1];
+bool ForwardRenderingPipeline::clipping(Vec4 &vertex1, Vec4 &vertex2) { //Liang-Barsky Algorithm is implemented
+    Color *color1 = scene.colorsOfVertices[vertex1.colorId - 1];
+    Color *color2 = scene.colorsOfVertices[vertex2.colorId - 1];
 
     double t_E = 0;
     double t_L = 1;
@@ -332,14 +372,14 @@ bool ForwardRenderingPipeline::clipping(Vec3& vertex1, Vec3& vertex2) { //Liang-
     double z_max = 1;
 
     bool lineVisible = true;
-    if(isVisible(dx, x_min - vertex1.x, t_E, t_L)){//left
-        if (isVisible(-dx, vertex1.x - x_max, t_E, t_L)){//right
-            if (isVisible(dy, y_min - vertex1.y, t_E, t_L)){//bottom
-                if (isVisible(-dy, vertex1.y - y_max, t_E, t_L)){//top
-                    if (isVisible(dz, z_min - vertex1.z, t_E, t_L)){//front
-                        if (isVisible(-dz, vertex1.z - z_max, t_E, t_L)){//back
+    if (isVisible(dx, x_min - vertex1.x, t_E, t_L)) {//left
+        if (isVisible(-dx, vertex1.x - x_max, t_E, t_L)) {//right
+            if (isVisible(dy, y_min - vertex1.y, t_E, t_L)) {//bottom
+                if (isVisible(-dy, vertex1.y - y_max, t_E, t_L)) {//top
+                    if (isVisible(dz, z_min - vertex1.z, t_E, t_L)) {//front
+                        if (isVisible(-dz, vertex1.z - z_max, t_E, t_L)) {//back
                             lineVisible = true;
-                            if (t_L < 1){
+                            if (t_L < 1) {
                                 vertex2.x = vertex1.x + t_L * dx;
                                 vertex2.y = vertex1.y + t_L * dy;
                                 vertex2.z = vertex1.z + t_L * dz;
@@ -347,7 +387,7 @@ bool ForwardRenderingPipeline::clipping(Vec3& vertex1, Vec3& vertex2) { //Liang-
                                 color2->g = color1->g + t_L * dc.g;
                                 color2->b = color1->b + t_L * dc.b;
                             }
-                            if (t_E > 0){
+                            if (t_E > 0) {
                                 vertex1.x = vertex1.x + t_E * dx;
                                 vertex1.y = vertex1.y + t_E * dy;
                                 vertex1.z = vertex1.z + t_E * dz;
@@ -454,6 +494,12 @@ void Painter::drawTriangle(Triangle &triangle) {
             }
         }
     }
+}
+
+void Painter::drawLine(Vec4 &src, Vec4 &dest) {
+    Vec3 src3(src.x, src.y, src.z, src.colorId);
+    Vec3 dest3(dest.x, dest.y, dest.z, dest.colorId);
+    drawLine(src3, dest3);
 }
 
 
