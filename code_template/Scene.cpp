@@ -248,17 +248,15 @@ ForwardRenderingPipeline::ForwardRenderingPipeline(Scene &scene1, Camera &camera
 }
 
 bool ForwardRenderingPipeline::isCullingExists(Triangle &triangle) {
-//    Vec3 vertex1 = triangle.vertex1;
-//    Vec3 vertex2 = triangle.vertex2;
-//    Vec3 vertex3 = triangle.vertex3;
-//
-//    Vec3 v1 = subtractVec3(vertex2, vertex1);
-//    Vec3 v2 = subtractVec3(vertex3, vertex1);
-//    Vec3 normal = normalizeVec3(crossProductVec3(v1, v2));
-//    Vec3 cameraToVertex = subtractVec3(vertex1,camera.pos);
-//    bool culling_exists = dotProductVec3(normal,cameraToVertex) < 0;
-//    return culling_exists;
-    return false;
+    Vec3 vertex1 = triangle.vertex1;
+    Vec3 vertex2 = triangle.vertex2;
+    Vec3 vertex3 = triangle.vertex3;
+
+    Vec3 v1 = subtractVec3(vertex2, vertex1);
+    Vec3 v2 = subtractVec3(vertex3, vertex1);
+    Vec3 normal = normalizeVec3(crossProductVec3(v1, v2));
+    bool culling_exists = dotProductVec3(normal,vertex1) < 0;
+    return culling_exists;
 }
 
 
