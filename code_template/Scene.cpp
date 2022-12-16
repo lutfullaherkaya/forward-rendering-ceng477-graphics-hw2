@@ -225,9 +225,16 @@ void ForwardRenderingPipeline::doViewingTransformations() {
                 triangle.vertex1 = Vec3(vertex1.x, vertex1.y, vertex1.z, vertex1.colorId);
                 triangle.vertex2 = Vec3(vertex2.x, vertex2.y, vertex2.z, vertex2.colorId);
                 triangle.vertex3 = Vec3(vertex3.x, vertex3.y, vertex3.z, vertex3.colorId);
-                if (scene.cullingEnabled && isCullingExists(triangle)) {//Backface Culling
-                    continue;
+                if (camera.projectionType == PROJ_ORTHO) {
+                    if (!(scene.cullingEnabled && isCullingExists(triangle))) {//Backface Culling
+                        continue;
+                    }
+                } else if (camera.projectionType == PROJ_PERSPECTIVE) {
+                    if (scene.cullingEnabled && isCullingExists(triangle)) {//Backface Culling
+                        continue;
+                    }
                 }
+
                 painter.drawTriangle(triangle);
             }
 
